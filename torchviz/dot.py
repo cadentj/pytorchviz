@@ -64,11 +64,13 @@ def make_dot(var, params=None, show_saved=False):
             name = param_map[id(var)] if id(var) in param_map else ''
         return '%s\n %s' % (name, size_to_str(var.size()))
 
+
     def add_nodes(fn, previous):
         assert not torch.is_tensor(fn)
-        if fn in seen:
+        if (fn, previous) in seen:
+            print("seen: ", get_fn_name(fn))
             return
-        seen.add(fn)
+        seen.add((fn, previous))
 
         names = []
 
@@ -87,6 +89,9 @@ def make_dot(var, params=None, show_saved=False):
 
         dot.edge(str(id(fn)), str(id(previous)))   
 
+    def add_nodes(fn, start_fn, last_fn):
+        
+
     def add_base_tensor(var, color='darkolivegreen1'):
         if var in seen:
             return
@@ -98,7 +103,6 @@ def make_dot(var, params=None, show_saved=False):
         if var._is_view(): # add node in place for views
             add_base_tensor(var._base, color='darkolivegreen3')
             dot.edge(str(id(var._base)), str(id(var)), style="dotted")
-
 
     # handle multiple outputs
     if isinstance(var, tuple):
