@@ -65,32 +65,54 @@ def make_dot(var, params=None, show_saved=False):
         return '%s\n %s' % (name, size_to_str(var.size()))
 
 
+    # def add_nodes(fn, previous):
+    #     assert not torch.is_tensor(fn)
+    #     if (fn, previous) in seen:
+    #         print("seen: ", get_fn_name(fn))
+    #         return
+    #     seen.add((fn, previous))
+
+    #     names = []
+
+    #     for u in fn.next_functions:
+    #         if hasattr(u[0], 'variable'):
+    #             names.append(get_var_name(u[0].variable))
+    #         else: 
+    #             if u[0] is not None:
+    #                 add_nodes(u[0], fn)
+
+    #     if names:
+    #         name = "\n".join(names)
+    #         dot.node(str(id(fn)), name, fillcolor='lightblue')
+    #     else:
+    #         dot.node(str(id(fn)), get_fn_name(fn))
+
+    #     dot.edge(str(id(fn)), str(id(previous)))   
+
     def add_nodes(fn, previous):
         assert not torch.is_tensor(fn)
+        
         if (fn, previous) in seen:
-            print("seen: ", get_fn_name(fn))
             return
+
         seen.add((fn, previous))
 
-        names = []
+        if hasattr(fn, 'variable'):
+            # This node is desired, so add it to the graph
+            name = get_var_name(fn.variable)
+            dot.node(str(id(fn)), name, fillcolor='lightblue')
+            # if previous is not None:
+            dot.edge(str(id(fn)), str(id(previous)))
 
-        for u in fn.next_functions:
-            if hasattr(u[0], 'variable'):
-                names.append(get_var_name(u[0].variable))
-            else: 
+            # Continue processing the next functions
+            for u in fn.next_functions:
                 if u[0] is not None:
                     add_nodes(u[0], fn)
-
-        if names:
-            name = "\n".join(names)
-            dot.node(str(id(fn)), name, fillcolor='lightblue')
         else:
-            dot.node(str(id(fn)), get_fn_name(fn))
-
-        dot.edge(str(id(fn)), str(id(previous)))   
-
-    def add_nodes(fn, start_fn, last_fn):
-        
+            # This node is not desired, so continue to the next functions without adding this node
+            for u in fn.next_functions:
+                if u[0] is not None:
+                    add_nodes(u[0], previous)
 
     def add_base_tensor(var, color='darkolivegreen1'):
         if var in seen:
@@ -98,7 +120,7 @@ def make_dot(var, params=None, show_saved=False):
         seen.add(var)
         dot.node(str(id(var)), get_var_name(var), fillcolor=color)
         if (var.grad_fn):
-            add_nodes(var.grad_fn, None)
+            add_nodes(var.grad_fn, var)
             dot.edge(str(id(var.grad_fn)), str(id(var)))
         if var._is_view(): # add node in place for views
             add_base_tensor(var._base, color='darkolivegreen3')
